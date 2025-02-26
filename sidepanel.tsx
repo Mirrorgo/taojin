@@ -78,18 +78,18 @@ function IndexSidePanel() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  const handleSend = () => {
-    if (!input.trim()) return
+  // 通用的发送消息并获取AI响应的函数
+  const sendMessageToAI = (messageContent: string) => {
+    if (!messageContent.trim()) return
+
     const updatedMessages: Message[] = [
       ...messages,
-      { role: "user", content: input }
+      { role: "user", content: messageContent }
     ]
 
     // 先更新UI显示用户消息
     setMessages(updatedMessages)
-    setInput("")
-    // Here you would typically call your API
-    // sendToAI(updatedMessages)
+
     // 调用AI服务并处理响应
     callAI(updatedMessages, "qwen", {
       apiKey: apiKey,
@@ -108,7 +108,7 @@ function IndexSidePanel() {
             ...updatedMessages,
             {
               role: "assistant",
-              content: `Error: ${response.error || "Unknown error"}`
+              content: `错误: ${response.error || "未知错误"}`
             }
           ])
         }
@@ -119,10 +119,43 @@ function IndexSidePanel() {
           ...updatedMessages,
           {
             role: "assistant",
-            content: `Error: ${error.message || "Failed to communicate with AI service"}`
+            content: `错误: ${error.message || "无法与AI服务通信"}`
           }
         ])
       })
+  }
+
+  // 获取最新的用户消息
+  const getLastUserMessage = (): string => {
+    const lastUserMessage = [...messages]
+      .reverse()
+      .find((msg) => msg.role === "user")
+    return lastUserMessage ? lastUserMessage.content : ""
+  }
+
+  // 处理发送按钮点击
+  const handleSend = () => {
+    if (!input.trim()) return
+    sendMessageToAI(input)
+    setInput("") // 清空输入框
+  }
+
+  // 处理翻译按钮点击
+  const handleTranslate = () => {
+    const lastContent = getLastUserMessage()
+    if (!lastContent) return
+
+    const translationRequest = `请将以下文本翻译成中文：\n\n${lastContent}`
+    sendMessageToAI(translationRequest)
+  }
+
+  // 处理解释按钮点击
+  const handleExplain = () => {
+    const lastContent = getLastUserMessage()
+    if (!lastContent) return
+
+    const explainRequest = `请解释以下内容，用简单易懂的语言：\n\n${lastContent}`
+    sendMessageToAI(explainRequest)
   }
 
   return (
@@ -170,6 +203,19 @@ function IndexSidePanel() {
           <div ref={messagesEndRef} /> {/* Add this div at the end */}
         </div>
       </ScrollArea>
+
+      {/* <div className="flex space-x-2">
+        <Button
+          className="bg-blue-500 hover:bg-blue-600 text-white"
+          onClick={() => handleTranslate()}>
+          翻译一下
+        </Button>
+        <Button
+          className="px-4 py-2 text-sm rounded-md bg-green-500 hover:bg-green-600 text-white"
+          onClick={() => handleExplain()}>
+          解释一下
+        </Button>
+      </div> */}
 
       <div className="flex gap-2 pt-4">
         <Input
