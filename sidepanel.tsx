@@ -11,6 +11,9 @@ import { ScrollArea } from "./components/ui/scroll-area"
 import { Separator } from "./components/ui/separator"
 import { Toggle } from "./components/ui/toggle" // 你可能需要添加这个组件
 
+// 导入 AI 服务
+import { callAI } from "./utils/aiService"
+
 interface Message {
   role: "user" | "assistant"
   content: string
@@ -20,6 +23,8 @@ function IndexSidePanel() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
   const [isSelectMode, setIsSelectMode] = useState(false)
+  // 从环境变量读取API密钥
+  const apiKey = process.env.PLASMO_PUBLIC_AI_API_KEY || ""
 
   const clearMessages = () => {
     setMessages([])
@@ -75,9 +80,49 @@ function IndexSidePanel() {
 
   const handleSend = () => {
     if (!input.trim()) return
-    setMessages([...messages, { role: "user", content: input }])
+    const updatedMessages: Message[] = [
+      ...messages,
+      { role: "user", content: input }
+    ]
+
+    // 先更新UI显示用户消息
+    setMessages(updatedMessages)
     setInput("")
     // Here you would typically call your API
+    // sendToAI(updatedMessages)
+    // 调用AI服务并处理响应
+    callAI(updatedMessages, "qwen", {
+      apiKey: apiKey,
+      modelName: "qwen-turbo-2024-11-01"
+    })
+      .then((response) => {
+        if (response.success) {
+          // 将AI响应添加到包含新消息的更新数组
+          setMessages([
+            ...updatedMessages,
+            { role: "assistant", content: response.content }
+          ])
+        } else {
+          // 处理错误情况
+          setMessages([
+            ...updatedMessages,
+            {
+              role: "assistant",
+              content: `Error: ${response.error || "Unknown error"}`
+            }
+          ])
+        }
+      })
+      .catch((error) => {
+        // 处理网络错误等异常
+        setMessages([
+          ...updatedMessages,
+          {
+            role: "assistant",
+            content: `Error: ${error.message || "Failed to communicate with AI service"}`
+          }
+        ])
+      })
   }
 
   return (
